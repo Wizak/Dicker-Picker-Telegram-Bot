@@ -32,13 +32,13 @@ def rating_table(data, paramatres):
         if l_dick_rate >= 20:
             dicks_rate = dicks_rate[:20]
 
-        text = 'Local rating:'
+        text = 'Chat rating:'
 
     return text + ''.join(['\n' + '\t'*10 + f'@{user[0]} = {user[1]} cm,' for user in dicks_rate[:-1]] + [
         '\n' + '\t'*10 + f'@{user[0]} = {user[1]} cm.' for user in [dicks_rate[-1]]])
 
 
-@dp.message_handler(commands=['start'])
+@dp.message_handler(commands=['play'])
 async def start_game(message: types.Message):
     cr.execute(
         f'SELECT * FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
@@ -46,6 +46,9 @@ async def start_game(message: types.Message):
     report_message = None
 
     if cr.fetchone() is None:
+        nextday_date = (datetime.datetime.today() +
+                        datetime.timedelta(days=1)).strftime('%d-%m-%Y-%H-%M')
+
         user_data = [
             message.chat.id,
             message.from_user.id,
@@ -53,15 +56,15 @@ async def start_game(message: types.Message):
             message.from_user.first_name,
             message.from_user.last_name,
             0,
-            '0'
+            nextday_date
         ]
 
         cr.execute('INSERT INTO users VALUES(?, ?, ?, ?, ?, ?, ?)', user_data)
         db.commit()
 
-        report_message = f'@{message.from_user.username}, join to game!'
+        report_message = f'@{message.from_user.username} join to game!'
     else:
-        report_message = f'@{message.from_user.username}, is exist in game!'
+        report_message = f'@{message.from_user.username} is exist in game!'
 
     await bot.send_message(
         message.chat.id,
@@ -72,27 +75,15 @@ async def start_game(message: types.Message):
 @dp.message_handler(commands=['dick'])
 async def dick_pick(message: types.Message):
     cr.execute(
-        f'SELECT dick, pick_time FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
+        f'SELECT * FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
     )
-    dick_n, pick_t = cr.fetchone()
 
-    if pick_t == '0':
-
-        up_dick = dickpick.dick_grow()
-        dick_size = dick_n + up_dick
-        nextday_date = (datetime.datetime.today() +
-                        datetime.timedelta(days=1)).strftime('%d-%m-%Y-%H-%M')
-
+    if cr.fetchone() is not None:
         cr.execute(
-            f'UPDATE users SET dick = {dick_size}, pick_time = "{nextday_date}" WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}')
-        db.commit()
-
-        await bot.send_message(
-            message.chat.id,
-            f'@{message.from_user.username} dick grew up on {up_dick} cm!\n' +
-            f'Curently dick is {dick_size} cm.'
+            f'SELECT dick, pick_time FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
         )
-    else:
+
+        dick_n, pick_t = cr.fetchone()
         up_dick = dickpick.dick_grow()
         dick_size = dick_n + up_dick
         nowday_date = datetime.datetime.today()
@@ -120,68 +111,114 @@ async def dick_pick(message: types.Message):
                 message.chat.id,
                 f'@{message.from_user.username}, time left to next pick: {format_date[0]}h {format_date[1]}m {format_date[2]}s!\nPlease, try again later.'
             )
+    else:
+        await bot.send_message(
+            message.chat.id,
+            f'@{message.from_user.username} is not exist!'
+        )
 
 
-@dp.message_handler(commands=['quit'])
+@dp.message_handler(commands=['leave'])
 async def delete_user(message: types.Message):
     cr.execute(
-        f'SELECT * FROM users WHERE chat_id = {message.chat.id} AND user_id = "{message.from_user.id}"'
+        f'SELECT * FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
     )
-    report_message = None
 
     if cr.fetchone() is not None:
         cr.execute(
-            f'DELETE FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}')
-        db.commit()
-        report_message = f'@{message.from_user.username}, left game!'
+            f'SELECT * FROM users WHERE chat_id = {message.chat.id} AND user_id = "{message.from_user.id}"'
+        )
+        report_message = None
+
+        if cr.fetchone() is not None:
+            cr.execute(
+                f'DELETE FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}')
+            db.commit()
+            report_message = f'@{message.from_user.username}, left game!'
+        else:
+            report_message = f'@{message.from_user.username}, don`t exist in game!'
+
+        await bot.send_message(
+            message.chat.id,
+            report_message
+        )
     else:
-        report_message = f'@{message.from_user.username}, don`t exist in game!'
-
-    await bot.send_message(
-        message.chat.id,
-        report_message
-    )
+        await bot.send_message(
+            message.chat.id,
+            f'@{message.from_user.username} is not exist!'
+        )
 
 
-@dp.message_handler(commands=['myself_score'])
+@dp.message_handler(commands=['score'])
 async def show_myself_score(message: types.Message):
     cr.execute(
-        f'SELECT username, dick FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
+        f'SELECT * FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
     )
 
-    dates = cr.fetchone()
-    table_rate = 'Your rating:\n' + '\t'*10 + f'@{dates[0]} = {dates[1]} cm.'
+    if cr.fetchone() is not None:
+        cr.execute(
+            f'SELECT username, dick FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
+        )
 
-    await bot.send_message(
-        message.chat.id,
-        table_rate
-    )
+        dates = cr.fetchone()
+        table_rate = 'Your rating:\n' + '\t' * \
+            10 + f'@{dates[0]} = {dates[1]} cm.'
+
+        await bot.send_message(
+            message.chat.id,
+            table_rate
+        )
+    else:
+        await bot.send_message(
+            message.chat.id,
+            f'@{message.from_user.username} is not exist!'
+        )
 
 
-@dp.message_handler(commands=['local_score'])
+@dp.message_handler(commands=['chat_rating'])
 async def show_local_score(message: types.Message):
     cr.execute(
-        f'SELECT username, dick FROM users WHERE chat_id = {message.chat.id}'
+        f'SELECT * FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
     )
 
-    table_rate = rating_table(cr.fetchall(), 0)
+    if cr.fetchone() is not None:
+        cr.execute(
+            f'SELECT username, dick FROM users WHERE chat_id = {message.chat.id}'
+        )
 
-    await bot.send_message(
-        message.chat.id,
-        table_rate
-    )
+        table_rate = rating_table(cr.fetchall(), 0)
+
+        await bot.send_message(
+            message.chat.id,
+            table_rate
+        )
+    else:
+        await bot.send_message(
+            message.chat.id,
+            f'@{message.from_user.username} is not exist!'
+        )
 
 
-@dp.message_handler(commands=['global_score'])
+@dp.message_handler(commands=['global_rating'])
 async def show_global_rating(message: types.Message):
-    cr.execute('SELECT username, dick FROM users')
-
-    table_rate = rating_table(cr.fetchall(), 1)
-
-    await bot.send_message(
-        message.chat.id,
-        table_rate
+    cr.execute(
+        f'SELECT * FROM users WHERE chat_id = {message.chat.id} AND user_id = {message.from_user.id}'
     )
+
+    if cr.fetchone() is not None:
+        cr.execute('SELECT username, dick FROM users')
+
+        table_rate = rating_table(cr.fetchall(), 1)
+
+        await bot.send_message(
+            message.chat.id,
+            table_rate
+        )
+    else:
+        await bot.send_message(
+            message.chat.id,
+            f'@{message.from_user.username} is not exist!'
+        )
 
 
 if __name__ == '__main__':
