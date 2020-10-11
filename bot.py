@@ -1,7 +1,7 @@
 import logging
-import config
+import configuration.config as conf
 import sqlite3
-import dickpick
+import logic.dickpick as dickp
 
 import datetime
 from aiogram import Bot, Dispatcher, executor, types
@@ -10,10 +10,10 @@ from aiogram import Bot, Dispatcher, executor, types
 # bot initialization
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token=config.TOKEN)
+bot = Bot(token=conf.TOKEN)
 dp = Dispatcher(bot)
 
-db = sqlite3.connect('server.db')
+db = sqlite3.connect('database\server.db')
 cr = db.cursor()
 
 
@@ -84,7 +84,7 @@ async def dick_pick(message: types.Message):
         )
 
         dick_n, pick_t = cr.fetchone()
-        up_dick = dickpick.dick_grow()
+        up_dick = dickp.dick_grow()
         dick_size = dick_n + up_dick
         nowday_date = datetime.datetime.today()
         table_date = list(map(int, pick_t.split('-')))
