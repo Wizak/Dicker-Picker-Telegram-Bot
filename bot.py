@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot)
 
-db = sqlite3.connect('database\server.db')
+db = sqlite3.connect('server.db')
 cr = db.cursor()
 
 

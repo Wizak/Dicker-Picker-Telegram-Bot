@@ -1,6 +1,6 @@
 import sqlite3
 
-db = sqlite3.connect('database\server.db')
+db = sqlite3.connect('server.db')
 cr = db.cursor()
 
 cr.execute('''CREATE TABLE users(
