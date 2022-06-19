@@ -1,2 +1,2 @@
-# Dicker-Picker 
+# Picker
 Telegram bot for gameplay!
